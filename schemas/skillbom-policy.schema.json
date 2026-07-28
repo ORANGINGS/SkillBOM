@@ -5,12 +5,12 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
-    "schema-version": {"const": "1"},
-    "version": {"const": "1"},
-    "defaults": {"$ref": "#/$defs/rules"},
+    "schema-version": {"const": "2"},
+    "version": {"const": "2"},
+    "defaults": {"$ref": "#/$defs/defaultRules"},
     "skills": {
       "type": "object",
-      "additionalProperties": {"$ref": "#/$defs/rules"}
+      "additionalProperties": {"$ref": "#/$defs/skillRules"}
     }
   },
   "$defs": {
@@ -19,7 +19,41 @@
       "items": {"type": "string", "minLength": 1},
       "uniqueItems": true
     },
-    "rules": {
+    "exceptionGrant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "item",
+        "reason",
+        "owner",
+        "approved-by",
+        "approved-at",
+        "expires-at"
+      ],
+      "properties": {
+        "item": {"type": "string", "minLength": 1},
+        "reason": {"type": "string", "minLength": 1},
+        "owner": {"type": "string", "minLength": 1},
+        "approved-by": {"type": "string", "minLength": 1},
+        "approved-at": {"type": "string", "format": "date"},
+        "expires-at": {"type": "string", "format": "date"},
+        "ticket": {"type": "string", "minLength": 1}
+      }
+    },
+    "baseProperties": {
+      "require-spec-valid": {"type": "boolean"},
+      "max-finding-severity": {
+        "enum": ["info", "low", "medium", "high", "critical"]
+      },
+      "denied-capabilities": {"$ref": "#/$defs/stringList"},
+      "allowed-services": {"$ref": "#/$defs/stringList"},
+      "allowed-agent-tools": {"$ref": "#/$defs/stringList"},
+      "exception-expiry-warning-days": {"type": "integer", "minimum": 0},
+      "max-exception-days": {"type": "integer", "minimum": 1},
+      "require-exception-ticket": {"type": "boolean"},
+      "require-separation-of-duties": {"type": "boolean"}
+    },
+    "defaultRules": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -30,9 +64,39 @@
         "denied-capabilities": {"$ref": "#/$defs/stringList"},
         "allowed-services": {"$ref": "#/$defs/stringList"},
         "allowed-agent-tools": {"$ref": "#/$defs/stringList"},
-        "capability-exceptions": {"$ref": "#/$defs/stringList"},
-        "service-exceptions": {"$ref": "#/$defs/stringList"},
-        "agent-tool-exceptions": {"$ref": "#/$defs/stringList"}
+        "exception-expiry-warning-days": {"type": "integer", "minimum": 0},
+        "max-exception-days": {"type": "integer", "minimum": 1},
+        "require-exception-ticket": {"type": "boolean"},
+        "require-separation-of-duties": {"type": "boolean"}
+      }
+    },
+    "skillRules": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "require-spec-valid": {"type": "boolean"},
+        "max-finding-severity": {
+          "enum": ["info", "low", "medium", "high", "critical"]
+        },
+        "denied-capabilities": {"$ref": "#/$defs/stringList"},
+        "allowed-services": {"$ref": "#/$defs/stringList"},
+        "allowed-agent-tools": {"$ref": "#/$defs/stringList"},
+        "exception-expiry-warning-days": {"type": "integer", "minimum": 0},
+        "max-exception-days": {"type": "integer", "minimum": 1},
+        "require-exception-ticket": {"type": "boolean"},
+        "require-separation-of-duties": {"type": "boolean"},
+        "capability-exceptions": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/exceptionGrant"}
+        },
+        "service-exceptions": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/exceptionGrant"}
+        },
+        "agent-tool-exceptions": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/exceptionGrant"}
+        }
       }
     }
   }

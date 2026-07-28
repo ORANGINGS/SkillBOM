@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0
+
+- Replace unaudited string exceptions with time-bounded exception grants in policy schema version 2.
+- Require reason, owner, independent approver, approval date, expiry date, and optionally a ticket.
+- Block expired, future-approved, overlong, self-approved, ticketless, and legacy exceptions.
+- Report expiring, unused, and orphaned policy grants to reduce permanent privilege accumulation.
+- Add reproducible date-based evaluation through `skillbom gate --as-of YYYY-MM-DD`.
+
 ## 0.2.0
 
 - Add a policy-as-code gate with global defaults and per-skill overrides.

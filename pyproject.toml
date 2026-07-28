@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "skillbom"
-version = "0.2.0"
+version = "0.3.0"
 description = "Generate a bill of materials and detect capability drift for Agent Skills"
 readme = "README.md"
 requires-python = ">=3.11"

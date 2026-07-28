@@ -46,7 +46,7 @@ skillbom diff skillbom.lock.json current.json --fail-on high
 
 ## Policy-as-Code 安全供應鏈閘門
 
-第一版只能告訴你「Skill 有哪些風險」；0.2.0 新增的 policy gate 可以定義「哪些風險在這個專案中不被允許」。
+0.2.0 讓專案能定義「哪些風險不被允許」；0.3.0 再把例外升級成**有期限、可稽核、預設失敗封閉**的安全核准紀錄。
 
 建立範本：
 
@@ -57,12 +57,12 @@ skillbom init-policy
 `skillbom.policy.yml` 範例：
 
 ```yaml
-schema-version: "1"
+schema-version: "2"
 defaults:
   require-spec-valid: true
   max-finding-severity: medium
   denied-capabilities:
-    - embedded-secret
+    - credential-access
     - privileged-operation
     - destructive-filesystem
   allowed-services:
@@ -71,33 +71,46 @@ defaults:
   allowed-agent-tools:
     - Read
     - Grep
+  exception-expiry-warning-days: 14
+  max-exception-days: 90
+  require-exception-ticket: true
+  require-separation-of-duties: true
 
 skills:
   release-helper:
     capability-exceptions:
-      - process-execution
-    service-exceptions:
-      - uploads.example.com
+      - item: process-execution
+        reason: 必須呼叫已核准的發布 CLI
+        owner: platform-team
+        approved-by: security-team
+        approved-at: 2026-07-28
+        expires-at: 2026-10-26
+        ticket: SEC-123
 ```
+
+每個例外都必須說明用途、負責人、核准者、核准日期、到期日與工單。`expires-at` 當天仍有效；隔天開始會被視為過期。閘門還會偵測：
+
+- 已過期或尚未生效的例外
+- 期限超過政策上限的例外
+- 負責人自行核准的例外
+- 缺少工單的例外
+- Skill 已不再需要、但政策仍保留的殘留權限
+- 政策指向已不存在 Skill 的孤兒規則
+- 舊版純字串例外，並要求遷移到 schema version 2
 
 執行閘門：
 
 ```powershell
 skillbom gate .github\skills --policy skillbom.policy.yml
+
+# 固定稽核日期，方便重現歷史 CI 結果
+skillbom gate .github\skills --policy skillbom.policy.yml --as-of 2026-07-28
 ```
 
-它可以直接阻擋：
-
-- 被政策禁止的憑證、提權、破壞性或動態執行能力
-- 未列入 allowlist 的外部網域
-- 未核准的 Agent Tool，例如 `Bash`
-- 超過政策容許等級的新資安 finding
-- 不符合 Agent Skills 規格的 Skill
-
-政策鍵若拼錯會直接失敗，不會靜默忽略；每個 Skill 的例外也必須明確寫進版本控制。這使 SkillBOM 從掃描器升級成可放入 Pull Request 的供應鏈安全閘門。
+它可以直接阻擋被禁止的能力、未核准網域、未核准 Agent Tool、過高風險 finding，以及治理資料不完整或失效的例外。政策鍵若拼錯或 grant 缺欄位會直接失敗，不會靜默忽略。
 
 ## 履歷可以怎麼寫
 
-> Built an offline security supply-chain gate for Agent Skills that generates evidence-backed capability/dependency manifests, enforces least-privilege policy-as-code, emits SARIF, and blocks unexpected privilege drift in GitHub pull requests.
+> Built an offline security supply-chain gate for Agent Skills that enforces least-privilege policy-as-code, governs time-bounded security exceptions with separation of duties, emits SARIF, and blocks stale or expired privilege in GitHub pull requests.
 
 這個專案能展示 Python 套件設計、AST／規則分析、供應鏈安全、CLI、JSON Schema 類型資料、GitHub Actions、SARIF、測試與開源文件能力。

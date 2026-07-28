@@ -18,6 +18,10 @@ inputs:
     description: SARIF output path
     required: false
     default: skillbom.sarif
+  as-of:
+    description: Optional YYYY-MM-DD date for reproducible exception evaluation
+    required: false
+    default: ""
 runs:
   using: composite
   steps:
@@ -38,12 +42,20 @@ runs:
     - name: Enforce SkillBOM policy
       if: ${{ inputs.policy != '' }}
       shell: bash
-      run: >-
-        skillbom gate "${{ inputs.target }}"
-        --policy "${{ inputs.policy }}"
-        --format sarif
-        --output "${{ inputs.sarif-output }}"
-        --fail-on "${{ inputs.fail-on }}"
+      env:
+        SKILLBOM_AS_OF: ${{ inputs.as-of }}
+      run: |
+        args=(
+          skillbom gate "${{ inputs.target }}"
+          --policy "${{ inputs.policy }}"
+          --format sarif
+          --output "${{ inputs.sarif-output }}"
+          --fail-on "${{ inputs.fail-on }}"
+        )
+        if [[ -n "${SKILLBOM_AS_OF}" ]]; then
+          args+=(--as-of "${SKILLBOM_AS_OF}")
+        fi
+        "${args[@]}"
 branding:
   icon: shield
   color: blue
