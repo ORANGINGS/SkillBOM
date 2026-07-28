@@ -1,191 +1,110 @@
 # SkillBOM
 
-**An evidence-backed bill of materials and capability-drift gate for Agent Skills.**
+**A zero-key security supply-chain scanner for Agent Skills, MCP servers, and AI tool integrations.**
 
-[![CI](https://github.com/ORANGINGS/skillbom/actions/workflows/ci.yml/badge.svg)](https://github.com/ORANGINGS/skillbom/actions/workflows/ci.yml)
+[![CI](https://github.com/ORANGINGS/SkillBOM/actions/workflows/ci.yml/badge.svg)](https://github.com/ORANGINGS/SkillBOM/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Agent Skills can contain instructions, scripts, references, external services, and tool permissions. Traditional package SBOMs do not explain the operational powers that a skill gains over time. SkillBOM statically inspects a skill, records its files and dependencies, infers capabilities, and blocks unexpected privilege drift in pull requests.
+SkillBOM is not a general-purpose bug scanner. It focuses on evidence-backed detection of undeclared or high-risk behavior in AI agent projects:
 
-> SkillBOM never executes target scripts. Static analysis is best-effort and a clean report is not a security guarantee.
+- shell and subprocess execution
+- credential, SSH, environment, and browser-session access
+- external network destinations
+- dynamic code execution
+- package install hooks and remote download-and-execute chains
+- exposed MCP tools with high-impact capabilities
+- differences between documented behavior and observed code
+- capability drift between repository versions
 
-繁體中文說明請見 [README.zh-TW.md](README.zh-TW.md).
+The core scanner is deterministic and does not require a paid AI API key. Public repositories are acquired with a shallow non-interactive `git clone`; local directories are scanned directly.
 
-## Standards
+Traditional Chinese documentation: [README.zh-TW.md](README.zh-TW.md).
 
-SkillBOM follows the open Agent Skills specification at `agentskills.io/specification` and supports the project skill layouts documented by GitHub Copilot. It deliberately separates observed capability evidence from malicious-intent judgments.
-
-## Why this project
-
-A code review may clearly show that ten lines changed while hiding the consequential change: a documentation-only skill now reads an API token, calls a new domain, or runs a shell command. SkillBOM makes that change explicit.
-
-```text
-Before                          After
-filesystem-read                 filesystem-read
-                                + credential-access   HIGH
-                                + network-access      HIGH
-                                + service:api.example.com
-```
-
-## Features
-
-- Validates the core open Agent Skills specification (`name`, `description`, metadata, file references).
-- Infers operational capabilities with exact file/line evidence.
-- Inventories Python imports, Node packages, system tools, agent tools, and external service domains.
-- Generates a deterministic, reviewable `skillbom.lock.json` with file hashes.
-- Detects new capabilities and dependency drift between two revisions.
-- Enforces version-controlled least-privilege policies in CI.
-- Emits SARIF for GitHub Code Scanning.
-- Works offline and never executes skill code.
-
-## Quick start
+## Scan an MCP or Agent repository
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -e .
-
-skillbom scan examples/safe-skill
-skillbom scan examples/risky-skill --fail-on high
+skillbom scan ./my-mcp-server
+skillbom scan https://github.com/owner/repository
+skillbom scan https://github.com/owner/repository --ref v1.4.0
 ```
 
-Example finding:
-
-```text
-CRITICAL  SHELL-PIPE-001  scripts/install.sh:4
-Remote content piped to shell: downloaded content is executed without an integrity check.
-```
-
-## Create and compare a baseline
+SkillBOM automatically distinguishes a standalone Skill collection from an Agent/MCP repository. Override this when necessary:
 
 ```bash
-skillbom lock .github/skills --output skillbom.lock.json
-
-# On a later revision
-skillbom lock .github/skills --output /tmp/current.json
-skillbom diff skillbom.lock.json /tmp/current.json --fail-on high
+skillbom scan ./project --mode repository
+skillbom scan ./skill --mode skill
 ```
 
-New capabilities are high-severity drift by default. New service domains and agent tools are medium-severity; content-only changes remain informational.
+## Compare capability drift
 
-## Policy-as-code supply-chain gate
+```bash
+skillbom repo-diff https://github.com/owner/repository \
+  --base-ref v1.3.0 \
+  --head-ref v1.4.0
+```
 
-Create a least-privilege policy template:
+The comparison reports newly added capabilities, external services, exposed MCP tools, project classifications, and new high/critical findings. High-severity drift exits with code `2` by default for CI enforcement.
+
+## Repository security checks
+
+- Node.js `preinstall`, `install`, and `postinstall` hooks
+- remote content downloaded and piped into a shell
+- Node.js `child_process.exec`, `spawn`, and related APIs
+- Python subprocess and shell execution through existing static rules
+- JavaScript `eval` and `Function`
+- `.ssh`, cloud credential files, `.env`, browser Cookies and Login Data
+- Python and JavaScript/TypeScript MCP tool registrations
+- high-impact behavior located in files that expose MCP tools
+- capabilities and service domains missing from README, SKILL.md, SECURITY.md, or `docs/*.md`
+
+Reports are available as text, JSON, and SARIF:
+
+```bash
+skillbom scan ./server --format json --output report.json
+skillbom scan ./server --format sarif --output report.sarif
+```
+
+## Safe public repository acquisition
+
+For GitHub URLs, SkillBOM:
+
+- accepts only public `https://github.com/owner/repository` URLs
+- rejects embedded credentials, ports, query parameters, fragments, and nested paths
+- uses a shallow, non-interactive clone
+- disables repository hooks
+- does not initialize submodules
+- ignores symbolic links
+- enforces repository file and byte limits
+- deletes the temporary checkout after analysis
+
+## Agent Skill policy gate
+
+The original Policy-as-Code workflow remains available:
 
 ```bash
 skillbom init-policy
-```
-
-A policy can deny sensitive capabilities, require valid Skill metadata, cap accepted finding severity, and allowlist external services or Agent tools. Schema version 2 makes every exception a time-bounded, reviewable grant:
-
-```yaml
-schema-version: "2"
-defaults:
-  require-spec-valid: true
-  max-finding-severity: medium
-  denied-capabilities:
-    - credential-access
-    - privileged-operation
-    - destructive-filesystem
-  allowed-services:
-    - github.com
-    - "*.github.com"
-  allowed-agent-tools:
-    - Read
-    - Grep
-  exception-expiry-warning-days: 14
-  max-exception-days: 90
-  require-exception-ticket: true
-  require-separation-of-duties: true
-
-skills:
-  release-helper:
-    capability-exceptions:
-      - item: process-execution
-        reason: Required to invoke the approved release CLI.
-        owner: platform-team
-        approved-by: security-team
-        approved-at: 2026-07-28
-        expires-at: 2026-10-26
-        ticket: SEC-123
-```
-
-Exception grants are valid through `expires-at`. The gate reports and invalidates expired, future-approved, overlong, self-approved, ticketless, and legacy string exceptions. It also reports unused grants and policy entries for skills that no longer exist, making stale privilege visible during review.
-
-Enforce it locally or in CI:
-
-```bash
 skillbom gate .github/skills --policy skillbom.policy.yml
-skillbom gate .github/skills --policy skillbom.policy.yml \
-  --format sarif --output skillbom-policy.sarif
-
-# Reproduce an audit for a specific date
-skillbom gate .github/skills --policy skillbom.policy.yml --as-of 2026-07-28
 ```
 
-The command exits with code `2` when a violation reaches `--fail-on` (high by default). Policy files are validated strictly so a misspelled security key or incomplete grant fails closed instead of being ignored. Schema version 1 remains readable for migration, but its unaudited string exceptions are rejected by the gate.
+It enforces least-privilege capabilities, service and Agent-tool allowlists, specification validity, finding thresholds, and time-bounded exception grants with ticketing, separation of duties, and expiry.
 
-## Output formats
+## Existing Skill inventory and drift
 
 ```bash
-skillbom scan ./skills --format text
-skillbom scan ./skills --format json --output report.json
-skillbom scan ./skills --format sarif --output skillbom.sarif
-```
-
-## Detected capability families
-
-| Capability | Representative evidence |
-|---|---|
-| `network-access` | `requests`, `fetch`, `curl`, `wget`, sockets |
-| `credential-access` | token/secret environment variables, `.ssh`, `.aws`, keyrings |
-| `process-execution` | `subprocess`, child processes, shell execution |
-| `filesystem-write` | write-mode file operations, redirects, `tee` |
-| `package-install` | pip/npm/apt/brew installation |
-| `privileged-operation` | `sudo`, broad chmod/chown |
-| `destructive-filesystem` | recursive deletion |
-| `destructive-vcs` | hard reset, clean, force push |
-| `context-influence` | instruction override or concealment language |
-
-## GitHub Actions
-
-The included `capability-drift.yml` loads the trusted lockfile from the PR base branch instead of trusting a modified lockfile in the pull request. The included `action.yml` can also perform a standalone scan.
-
-```yaml
-- uses: ORANGINGS/SkillBOM@v0.3.0
-  with:
-    target: .github/skills
-    policy: skillbom.policy.yml
-    fail-on: high
-    sarif-output: skillbom.sarif
-    # as-of: 2026-07-28  # optional reproducible audit date
-```
-
-Upload the result with `github/codeql-action/upload-sarif` to receive inline annotations.
-
-## Project structure
-
-```text
-src/skillbom/             CLI, parser, scanners, manifest and drift engine
-tests/                    Unit tests
-examples/                 Safe and intentionally risky sample skills
-.github/skills/            A real review skill used to dogfood SkillBOM
-.github/workflows/         CI, SARIF and capability-drift gates
-docs/architecture.md      Design overview
+skillbom lock .github/skills --output skillbom.lock.json
+skillbom diff skillbom.lock.json current.json --fail-on high
 ```
 
 ## Scope and limitations
 
-SkillBOM is a portfolio-grade alpha, not a malware verdict engine. It uses deterministic static rules, which means obfuscated, generated, or semantically malicious content may evade detection, while legitimate administrative skills may produce expected warnings. The correct workflow is evidence-backed review, not blind trust in a score.
+SkillBOM performs static analysis and never imports or executes target code. A clean report does not prove that a project is safe. The intended claim is narrower:
 
-## Roadmap
+> Based on visible code, metadata, documentation, and configured rules, SkillBOM identifies known supply-chain risks, undeclared capabilities, and capability drift.
 
-- Signed provenance and publisher identity verification.
-- Native CycloneDX extension for Agent Skill dependencies.
-- Cross-skill trigger collision analysis.
-- Archive acquisition protections and signed provenance attestations.
-- Optional semantic analysis behind an explicit model provider interface.
+Dependency vulnerability intelligence, deeper taint analysis, sandbox execution, and signed publisher provenance are separate roadmap layers.
+
+See [repository scanning documentation](docs/repository-scanning.md) for details.
 
 ## License
 
