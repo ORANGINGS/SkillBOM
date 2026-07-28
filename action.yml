@@ -1,13 +1,17 @@
 name: SkillBOM scan
-description: Generate an Agent Skill bill of materials and optionally fail on findings.
+description: Scan Agent Skills or enforce a policy-as-code security gate.
 author: ORANGINGS
 inputs:
   target:
     description: Skill directory, SKILL.md, or skills root
     required: false
     default: .github/skills
+  policy:
+    description: Optional SkillBOM policy YAML. When set, policy gate mode is used.
+    required: false
+    default: ""
   fail-on:
-    description: Finding severity threshold (info, low, medium, high, critical)
+    description: Finding or policy-violation severity threshold
     required: false
     default: high
   sarif-output:
@@ -24,9 +28,19 @@ runs:
       shell: bash
       run: pip install "${GITHUB_ACTION_PATH}"
     - name: Scan Agent Skills
+      if: ${{ inputs.policy == '' }}
       shell: bash
       run: >-
         skillbom scan "${{ inputs.target }}"
+        --format sarif
+        --output "${{ inputs.sarif-output }}"
+        --fail-on "${{ inputs.fail-on }}"
+    - name: Enforce SkillBOM policy
+      if: ${{ inputs.policy != '' }}
+      shell: bash
+      run: >-
+        skillbom gate "${{ inputs.target }}"
+        --policy "${{ inputs.policy }}"
         --format sarif
         --output "${{ inputs.sarif-output }}"
         --fail-on "${{ inputs.fail-on }}"

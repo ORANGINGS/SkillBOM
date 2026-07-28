@@ -1,6 +1,6 @@
 # Architecture
 
-SkillBOM is an offline static-analysis pipeline:
+SkillBOM is an offline static-analysis and policy-enforcement pipeline:
 
 ```text
 Skill directories
@@ -14,11 +14,20 @@ Discovery -> SKILL.md parser -> Spec checks
                      v
               Dependency inventory
                      |
-                     v
-              skillbom.lock.json
+          +----------+-----------+
+          |                      |
+          v                      v
+ skillbom.lock.json      skillbom.policy.yml
+          |                      |
+          v                      v
+ Capability drift       Policy-as-code gate
+          |                      |
+          +----------+-----------+
                      |
                      v
-              Drift comparison / SARIF
+             Text / JSON / SARIF
 ```
 
 The scanner never imports or executes code from the target skill. Findings retain file, line, and snippet evidence. Capabilities describe what a skill appears able to do; they do not by themselves imply malicious intent.
+
+The policy engine is deterministic and deny-by-rule. It can require specification compliance, cap accepted finding severity, deny sensitive capabilities, and allowlist external domains or Agent tools. Skill-specific exceptions are explicit in version-controlled YAML so reviewers can see policy changes in the same pull request as code changes.

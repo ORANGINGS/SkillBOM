@@ -94,3 +94,13 @@ class Drift:
     skill: str
     item: str
     message: str
+
+
+@dataclass(slots=True, frozen=True)
+class PolicyViolation:
+    rule_id: str
+    severity: Severity
+    skill: str
+    subject: str
+    message: str
+    evidence: Evidence | None = None

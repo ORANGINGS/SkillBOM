@@ -8,7 +8,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from skillbom.models import Drift, Manifest, Severity
+from skillbom.models import Drift, Manifest, PolicyViolation, Severity
 
 SEVERITY_STYLES = {
     Severity.INFO: "dim",
@@ -66,6 +66,90 @@ def print_drifts(drifts: list[Drift], console: Console) -> None:
             drift.message,
         )
     console.print(table)
+
+
+def print_policy_violations(violations: list[PolicyViolation], console: Console) -> None:
+    if not violations:
+        console.print("[bold green]Policy gate passed.[/bold green]")
+        return
+    table = Table(title="SkillBOM policy gate", show_header=True, header_style="bold")
+    table.add_column("Severity", width=10)
+    table.add_column("Skill", width=22)
+    table.add_column("Policy rule", width=24)
+    table.add_column("Location", width=28)
+    table.add_column("Details")
+    for violation in violations:
+        style = SEVERITY_STYLES[violation.severity]
+        location = (
+            f"{violation.evidence.file}:{violation.evidence.line}"
+            if violation.evidence
+            else "-"
+        )
+        table.add_row(
+            f"[{style}]{violation.severity.value.upper()}[/{style}]",
+            violation.skill,
+            violation.rule_id,
+            location,
+            violation.message,
+        )
+    console.print(table)
+
+
+def policy_violations_to_sarif(
+    manifest: Manifest, violations: list[PolicyViolation]
+) -> dict[str, Any]:
+    rules: dict[str, dict[str, Any]] = {}
+    results: list[dict[str, Any]] = []
+    skill_paths = {skill.name: skill.path for skill in manifest.skills}
+    for violation in violations:
+        rules[violation.rule_id] = {
+            "id": violation.rule_id,
+            "name": violation.rule_id.replace("-", ""),
+            "shortDescription": {"text": violation.message},
+            "defaultConfiguration": {"level": _sarif_level(violation.severity)},
+        }
+        result: dict[str, Any] = {
+            "ruleId": violation.rule_id,
+            "level": _sarif_level(violation.severity),
+            "message": {"text": violation.message},
+            "properties": {"skill": violation.skill, "subject": violation.subject},
+        }
+        if violation.evidence:
+            base = skill_paths.get(violation.skill, "")
+            location = (
+                Path(base) / violation.evidence.file
+                if base
+                else Path(violation.evidence.file)
+            )
+            result["locations"] = [
+                {
+                    "physicalLocation": {
+                        "artifactLocation": {"uri": location.as_posix()},
+                        "region": {
+                            "startLine": violation.evidence.line,
+                            "snippet": {"text": violation.evidence.snippet},
+                        },
+                    }
+                }
+            ]
+        results.append(result)
+    return {
+        "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+        "version": "2.1.0",
+        "runs": [
+            {
+                "tool": {
+                    "driver": {
+                        "name": "SkillBOM Policy Gate",
+                        "version": manifest.tool["version"],
+                        "informationUri": "https://github.com/ORANGINGS/SkillBOM",
+                        "rules": list(rules.values()),
+                    }
+                },
+                "results": results,
+            }
+        ],
+    }
 
 
 def to_sarif(manifest: Manifest) -> dict[str, Any]:

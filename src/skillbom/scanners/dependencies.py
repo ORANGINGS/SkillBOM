@@ -6,7 +6,14 @@ import re
 from pathlib import Path
 
 from skillbom.models import Dependency, Evidence
-from skillbom.utils import clean_snippet, domain_from_url, extract_urls, iter_files, read_text, relative
+from skillbom.utils import (
+    clean_snippet,
+    domain_from_url,
+    extract_urls,
+    iter_files,
+    read_text,
+    relative,
+)
 
 SHELL_TOOLS = {
     "git",
