@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from skillbom import __version__
@@ -30,7 +30,7 @@ def build_manifest(target: Path, *, include_timestamp: bool = True) -> Manifest:
     skills = [build_skill_record(root, target) for root in skill_roots]
     return Manifest(
         schema_version="0.1",
-        generated_at=datetime.now(timezone.utc).isoformat() if include_timestamp else None,
+        generated_at=datetime.now(UTC).isoformat() if include_timestamp else None,
         target=display_target,
         tool={"name": "skillbom", "version": __version__},
         skills=skills,

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import re
-from pathlib import Path
 
 from skillbom.models import Evidence, Finding, Severity
 from skillbom.parser import ParsedSkill
