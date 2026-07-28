@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Annotated
 
 import typer
@@ -9,7 +8,6 @@ from skillbom import __version__
 from skillbom.cli import gate, init, init_policy, lock_manifest
 from skillbom.commands_diff import diff_command, repo_diff_command
 from skillbom.commands_scan import scan_command
-from skillbom.models import Severity
 
 app = typer.Typer(
     no_args_is_help=True,
