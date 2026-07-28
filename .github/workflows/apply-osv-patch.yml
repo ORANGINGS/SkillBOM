@@ -25,11 +25,28 @@ jobs:
           ref: agent/osv-dependency-intelligence
           fetch-depth: 0
       - name: Reassemble and verify development patch
+        id: verify
+        continue-on-error: true
+        shell: bash
         run: |
-          cat .github/osv-patch/g00 .github/osv-patch/g01 .github/osv-patch/g02 .github/osv-patch/g03 .github/osv-patch/g04 > /tmp/osv-05.patch.gz
-          gzip -t /tmp/osv-05.patch.gz
-          gzip -dc /tmp/osv-05.patch.gz > /tmp/osv-05.patch
-          git apply --check /tmp/osv-05.patch
+          set -o pipefail
+          {
+            cat .github/osv-patch/g00 .github/osv-patch/g01 .github/osv-patch/g02 .github/osv-patch/g03 .github/osv-patch/g04 > /tmp/osv-05.patch.gz
+            sha256sum /tmp/osv-05.patch.gz
+            gzip -t /tmp/osv-05.patch.gz
+            gzip -dc /tmp/osv-05.patch.gz > /tmp/osv-05.patch
+            git status --short
+            git apply --check --verbose /tmp/osv-05.patch
+          } > /tmp/osv-apply-diagnostic.txt 2>&1
+      - name: Upload apply diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: osv-apply-diagnostic
+          path: /tmp/osv-apply-diagnostic.txt
+      - name: Fail on verification error
+        if: steps.verify.outcome == 'failure'
+        run: exit 1
       - name: Apply verified development patch
         run: |
           git apply --index /tmp/osv-05.patch
