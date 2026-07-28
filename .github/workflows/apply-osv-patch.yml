@@ -24,12 +24,18 @@ jobs:
         with:
           ref: agent/osv-dependency-intelligence
           fetch-depth: 0
+      - name: Reassemble and verify development patch
+        run: |
+          cat .github/osv-patch/g00 .github/osv-patch/g01 .github/osv-patch/g02 .github/osv-patch/g03 .github/osv-patch/g04 > /tmp/osv-05.patch.gz
+          gzip -t /tmp/osv-05.patch.gz
+          gzip -dc /tmp/osv-05.patch.gz > /tmp/osv-05.patch
+          git apply --check /tmp/osv-05.patch
       - name: Apply verified development patch
         run: |
-          gzip -dc .github/osv-apply.patch.gz > /tmp/osv-05.patch
-          git apply --check /tmp/osv-05.patch
           git apply --index /tmp/osv-05.patch
-          git rm .github/osv-apply.patch.gz .github/workflows/apply-osv-patch.yml
+          git rm -r .github/osv-patch
+          git rm -f .github/osv-apply.patch.gz
+          git rm .github/workflows/apply-osv-patch.yml
       - name: Commit atomic 0.5.0 update
         run: |
           git config user.name "github-actions[bot]"
