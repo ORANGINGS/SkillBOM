@@ -35,6 +35,7 @@ filesystem-read                 filesystem-read
 - Inventories Python imports, Node packages, system tools, agent tools, and external service domains.
 - Generates a deterministic, reviewable `skillbom.lock.json` with file hashes.
 - Detects new capabilities and dependency drift between two revisions.
+- Enforces version-controlled least-privilege policies in CI.
 - Emits SARIF for GitHub Code Scanning.
 - Works offline and never executes skill code.
 
@@ -68,6 +69,50 @@ skillbom diff skillbom.lock.json /tmp/current.json --fail-on high
 
 New capabilities are high-severity drift by default. New service domains and agent tools are medium-severity; content-only changes remain informational.
 
+## Policy-as-code supply-chain gate
+
+Create a least-privilege policy template:
+
+```bash
+skillbom init-policy
+```
+
+A policy can deny sensitive capabilities, require valid Skill metadata, cap accepted finding severity, and allowlist external services or Agent tools:
+
+```yaml
+schema-version: "1"
+defaults:
+  require-spec-valid: true
+  max-finding-severity: medium
+  denied-capabilities:
+    - embedded-secret
+    - privileged-operation
+    - destructive-filesystem
+  allowed-services:
+    - github.com
+    - "*.github.com"
+  allowed-agent-tools:
+    - Read
+    - Grep
+
+skills:
+  release-helper:
+    capability-exceptions:
+      - process-execution
+    service-exceptions:
+      - uploads.example.com
+```
+
+Enforce it locally or in CI:
+
+```bash
+skillbom gate .github/skills --policy skillbom.policy.yml
+skillbom gate .github/skills --policy skillbom.policy.yml \
+  --format sarif --output skillbom-policy.sarif
+```
+
+The command exits with code `2` when a violation reaches `--fail-on` (high by default). Policy files are validated strictly so a misspelled security key fails closed instead of being ignored.
+
 ## Output formats
 
 ```bash
@@ -95,9 +140,10 @@ skillbom scan ./skills --format sarif --output skillbom.sarif
 The included `capability-drift.yml` loads the trusted lockfile from the PR base branch instead of trusting a modified lockfile in the pull request. The included `action.yml` can also perform a standalone scan.
 
 ```yaml
-- uses: ORANGINGS/skillbom@v0.1.0
+- uses: ORANGINGS/SkillBOM@v0.2.0
   with:
     target: .github/skills
+    policy: skillbom.policy.yml
     fail-on: high
     sarif-output: skillbom.sarif
 ```
@@ -121,7 +167,7 @@ SkillBOM is a portfolio-grade alpha, not a malware verdict engine. It uses deter
 
 ## Roadmap
 
-- Policy file for allowed capabilities and approved domains.
+- Expiring, reason-bound policy exceptions with approval metadata.
 - Native CycloneDX extension for Agent Skill dependencies.
 - Cross-skill trigger collision analysis.
 - Archive acquisition protections and signed provenance attestations.

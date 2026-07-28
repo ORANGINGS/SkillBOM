@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ORANGINGS/SkillBOM/schemas/skillbom-policy.schema.json",
+  "title": "SkillBOM policy",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema-version": {"const": "1"},
+    "version": {"const": "1"},
+    "defaults": {"$ref": "#/$defs/rules"},
+    "skills": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/rules"}
+    }
+  },
+  "$defs": {
+    "stringList": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "rules": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "require-spec-valid": {"type": "boolean"},
+        "max-finding-severity": {
+          "enum": ["info", "low", "medium", "high", "critical"]
+        },
+        "denied-capabilities": {"$ref": "#/$defs/stringList"},
+        "allowed-services": {"$ref": "#/$defs/stringList"},
+        "allowed-agent-tools": {"$ref": "#/$defs/stringList"},
+        "capability-exceptions": {"$ref": "#/$defs/stringList"},
+        "service-exceptions": {"$ref": "#/$defs/stringList"},
+        "agent-tool-exceptions": {"$ref": "#/$defs/stringList"}
+      }
+    }
+  }
+}

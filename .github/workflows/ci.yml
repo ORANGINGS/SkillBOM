@@ -24,6 +24,8 @@ jobs:
       - run: ruff check .
       - run: pytest --cov=skillbom --cov-report=term-missing
       - run: skillbom scan examples/safe-skill --fail-on high
+      - run: skillbom gate .github/skills --policy skillbom.policy.yml
+      - run: skillbom gate examples/risky-skill --policy skillbom.policy.yml --format json --output /tmp/risky-policy.json && exit 1 || test $? -eq 2
 
   sarif:
     runs-on: ubuntu-latest

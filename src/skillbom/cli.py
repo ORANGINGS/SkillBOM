@@ -11,7 +11,15 @@ from skillbom import __version__
 from skillbom.diffing import compare_manifests
 from skillbom.manifest import build_manifest, read_manifest, write_manifest
 from skillbom.models import Severity
-from skillbom.reporting import print_drifts, print_manifest, to_sarif, write_json
+from skillbom.policy import evaluate_policy, read_policy, write_default_policy
+from skillbom.reporting import (
+    policy_violations_to_sarif,
+    print_drifts,
+    print_manifest,
+    print_policy_violations,
+    to_sarif,
+    write_json,
+)
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -173,3 +181,91 @@ metadata:
 """
     (destination / "SKILL.md").write_text(content, encoding="utf-8")
     console.print(f"Created [bold]{destination / 'SKILL.md'}[/bold]")
+
+
+@app.command()
+def gate(
+    target: Annotated[Path, typer.Argument(help="Skill directory, SKILL.md, or skills root.")],
+    policy: Annotated[
+        Path,
+        typer.Option("--policy", "-p", help="Policy-as-code YAML file."),
+    ] = Path("skillbom.policy.yml"),
+    format: Annotated[
+        str,
+        typer.Option("--format", "-f", help="Output format: text, json, or sarif."),
+    ] = "text",
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", "-o", help="Write JSON/SARIF output to a file."),
+    ] = None,
+    fail_on: Annotated[
+        Severity | None,
+        typer.Option(help="Exit 2 when a policy violation reaches this severity."),
+    ] = Severity.HIGH,
+) -> None:
+    """Enforce a least-privilege policy against one or more Agent Skills."""
+    try:
+        manifest = build_manifest(target)
+        loaded_policy = read_policy(policy)
+        violations = evaluate_policy(manifest, loaded_policy)
+    except (OSError, ValueError) as exc:
+        console.print(f"[bold red]error:[/bold red] {exc}")
+        raise typer.Exit(1) from exc
+
+    normalized = format.lower()
+    if normalized == "text":
+        print_policy_violations(violations, console)
+    elif normalized == "json":
+        write_json(
+            [
+                {
+                    "rule_id": item.rule_id,
+                    "severity": item.severity.value,
+                    "skill": item.skill,
+                    "subject": item.subject,
+                    "message": item.message,
+                    "evidence": (
+                        {
+                            "file": item.evidence.file,
+                            "line": item.evidence.line,
+                            "snippet": item.evidence.snippet,
+                        }
+                        if item.evidence
+                        else None
+                    ),
+                }
+                for item in violations
+            ],
+            output,
+            console,
+        )
+    elif normalized == "sarif":
+        write_json(policy_violations_to_sarif(manifest, violations), output, console)
+    else:
+        console.print("[bold red]error:[/bold red] --format must be text, json, or sarif")
+        raise typer.Exit(1)
+
+    if fail_on is not None and any(
+        item.severity.rank >= fail_on.rank for item in violations
+    ):
+        raise typer.Exit(2)
+
+
+@app.command("init-policy")
+def init_policy(
+    output: Annotated[
+        Path,
+        typer.Option("--output", "-o", help="Policy file path."),
+    ] = Path("skillbom.policy.yml"),
+    force: Annotated[
+        bool,
+        typer.Option("--force", help="Replace an existing policy file."),
+    ] = False,
+) -> None:
+    """Create a documented least-privilege policy template."""
+    try:
+        write_default_policy(output, force=force)
+    except OSError as exc:
+        console.print(f"[bold red]error:[/bold red] {exc}")
+        raise typer.Exit(1) from exc
+    console.print(f"Created [bold]{output}[/bold]")

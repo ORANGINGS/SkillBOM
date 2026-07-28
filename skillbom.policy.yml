@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=./schemas/skillbom-policy.schema.json
+schema-version: "1"
+defaults:
+  require-spec-valid: true
+  max-finding-severity: medium
+  denied-capabilities:
+    - embedded-secret
+    - code-execution
+    - privileged-operation
+    - destructive-filesystem
+    - destructive-vcs
+  allowed-services:
+    - github.com
+    - api.github.com
+  allowed-agent-tools:
+    - Read
+    - Grep
+    - Glob
