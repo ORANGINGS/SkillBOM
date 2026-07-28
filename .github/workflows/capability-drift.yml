@@ -1,0 +1,33 @@
+name: Agent Skill capability drift
+
+on:
+  pull_request:
+    paths:
+      - ".github/skills/**"
+      - ".agents/skills/**"
+      - ".claude/skills/**"
+      - "skills/**"
+      - "skillbom.lock.json"
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - name: Generate current manifest
+        run: skillbom lock .github/skills --output /tmp/current-skillbom.json
+      - name: Load trusted baseline from base branch
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: git show "origin/${BASE_REF}:skillbom.lock.json" > /tmp/base-skillbom.json
+      - name: Block unexpected high-risk drift
+        run: skillbom diff /tmp/base-skillbom.json /tmp/current-skillbom.json --fail-on high

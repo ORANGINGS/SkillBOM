@@ -1,0 +1,37 @@
+{
+  "generated_at": null,
+  "schema_version": "0.1",
+  "skills": [
+    {
+      "capabilities": [],
+      "dependencies": [],
+      "digest": "66f783892b1c4e177fdf997257e92cec8c7ee33bf2e9057dbdf336ac343388d9",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "sha256": "29ee427220218324fb3b9904908a96a09e3b694db70246be69502f19179e6d9c",
+          "size": 1307
+        }
+      ],
+      "findings": [],
+      "metadata": {
+        "compatibility": "Requires Python 3.11+ and the local SkillBOM package.",
+        "description": "Reviews changes to Agent Skill files for specification compliance, capability drift, dependency changes, and unsafe scripts. Use when reviewing a pull request that modifies SKILL.md, scripts, references, or assets inside a skill directory.",
+        "license": "MIT",
+        "metadata": {
+          "version": "0.1.0"
+        },
+        "name": "skill-security-review"
+      },
+      "name": "skill-security-review",
+      "path": "skill-security-review",
+      "score": 100,
+      "spec_valid": true
+    }
+  ],
+  "target": ".github/skills",
+  "tool": {
+    "name": "skillbom",
+    "version": "0.1.0"
+  }
+}

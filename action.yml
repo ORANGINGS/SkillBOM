@@ -1,0 +1,35 @@
+name: SkillBOM scan
+description: Generate an Agent Skill bill of materials and optionally fail on findings.
+author: ORANGINGS
+inputs:
+  target:
+    description: Skill directory, SKILL.md, or skills root
+    required: false
+    default: .github/skills
+  fail-on:
+    description: Finding severity threshold (info, low, medium, high, critical)
+    required: false
+    default: high
+  sarif-output:
+    description: SARIF output path
+    required: false
+    default: skillbom.sarif
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+    - name: Install SkillBOM
+      shell: bash
+      run: pip install "${GITHUB_ACTION_PATH}"
+    - name: Scan Agent Skills
+      shell: bash
+      run: >-
+        skillbom scan "${{ inputs.target }}"
+        --format sarif
+        --output "${{ inputs.sarif-output }}"
+        --fail-on "${{ inputs.fail-on }}"
+branding:
+  icon: shield
+  color: blue
