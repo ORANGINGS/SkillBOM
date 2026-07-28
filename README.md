@@ -77,15 +77,15 @@ Create a least-privilege policy template:
 skillbom init-policy
 ```
 
-A policy can deny sensitive capabilities, require valid Skill metadata, cap accepted finding severity, and allowlist external services or Agent tools:
+A policy can deny sensitive capabilities, require valid Skill metadata, cap accepted finding severity, and allowlist external services or Agent tools. Schema version 2 makes every exception a time-bounded, reviewable grant:
 
 ```yaml
-schema-version: "1"
+schema-version: "2"
 defaults:
   require-spec-valid: true
   max-finding-severity: medium
   denied-capabilities:
-    - embedded-secret
+    - credential-access
     - privileged-operation
     - destructive-filesystem
   allowed-services:
@@ -94,14 +94,24 @@ defaults:
   allowed-agent-tools:
     - Read
     - Grep
+  exception-expiry-warning-days: 14
+  max-exception-days: 90
+  require-exception-ticket: true
+  require-separation-of-duties: true
 
 skills:
   release-helper:
     capability-exceptions:
-      - process-execution
-    service-exceptions:
-      - uploads.example.com
+      - item: process-execution
+        reason: Required to invoke the approved release CLI.
+        owner: platform-team
+        approved-by: security-team
+        approved-at: 2026-07-28
+        expires-at: 2026-10-26
+        ticket: SEC-123
 ```
+
+Exception grants are valid through `expires-at`. The gate reports and invalidates expired, future-approved, overlong, self-approved, ticketless, and legacy string exceptions. It also reports unused grants and policy entries for skills that no longer exist, making stale privilege visible during review.
 
 Enforce it locally or in CI:
 
@@ -109,9 +119,12 @@ Enforce it locally or in CI:
 skillbom gate .github/skills --policy skillbom.policy.yml
 skillbom gate .github/skills --policy skillbom.policy.yml \
   --format sarif --output skillbom-policy.sarif
+
+# Reproduce an audit for a specific date
+skillbom gate .github/skills --policy skillbom.policy.yml --as-of 2026-07-28
 ```
 
-The command exits with code `2` when a violation reaches `--fail-on` (high by default). Policy files are validated strictly so a misspelled security key fails closed instead of being ignored.
+The command exits with code `2` when a violation reaches `--fail-on` (high by default). Policy files are validated strictly so a misspelled security key or incomplete grant fails closed instead of being ignored. Schema version 1 remains readable for migration, but its unaudited string exceptions are rejected by the gate.
 
 ## Output formats
 
@@ -140,12 +153,13 @@ skillbom scan ./skills --format sarif --output skillbom.sarif
 The included `capability-drift.yml` loads the trusted lockfile from the PR base branch instead of trusting a modified lockfile in the pull request. The included `action.yml` can also perform a standalone scan.
 
 ```yaml
-- uses: ORANGINGS/SkillBOM@v0.2.0
+- uses: ORANGINGS/SkillBOM@v0.3.0
   with:
     target: .github/skills
     policy: skillbom.policy.yml
     fail-on: high
     sarif-output: skillbom.sarif
+    # as-of: 2026-07-28  # optional reproducible audit date
 ```
 
 Upload the result with `github/codeql-action/upload-sarif` to receive inline annotations.
@@ -167,7 +181,7 @@ SkillBOM is a portfolio-grade alpha, not a malware verdict engine. It uses deter
 
 ## Roadmap
 
-- Expiring, reason-bound policy exceptions with approval metadata.
+- Signed provenance and publisher identity verification.
 - Native CycloneDX extension for Agent Skill dependencies.
 - Cross-skill trigger collision analysis.
 - Archive acquisition protections and signed provenance attestations.

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import date
 from pathlib import Path
 from typing import Annotated
 
@@ -202,12 +203,17 @@ def gate(
         Severity | None,
         typer.Option(help="Exit 2 when a policy violation reaches this severity."),
     ] = Severity.HIGH,
+    as_of: Annotated[
+        str | None,
+        typer.Option("--as-of", help="Evaluate exception grants on YYYY-MM-DD instead of today."),
+    ] = None,
 ) -> None:
     """Enforce a least-privilege policy against one or more Agent Skills."""
     try:
         manifest = build_manifest(target)
         loaded_policy = read_policy(policy)
-        violations = evaluate_policy(manifest, loaded_policy)
+        evaluation_date = date.fromisoformat(as_of) if as_of else None
+        violations = evaluate_policy(manifest, loaded_policy, as_of=evaluation_date)
     except (OSError, ValueError) as exc:
         console.print(f"[bold red]error:[/bold red] {exc}")
         raise typer.Exit(1) from exc
