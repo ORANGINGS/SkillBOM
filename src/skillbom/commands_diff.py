@@ -9,8 +9,8 @@ from rich.console import Console
 from skillbom.diffing import compare_manifests
 from skillbom.models import Drift, Severity
 from skillbom.project import build_project_report, compare_project_reports
-from skillbom.repository import acquire_target, is_github_repository_url
 from skillbom.reporting import print_drifts, write_json
+from skillbom.repository import acquire_target, is_github_repository_url
 
 console = Console()
 
