@@ -57,6 +57,8 @@ def iter_files(root: Path) -> list[Path]:
     for path in root.rglob("*"):
         if any(part in IGNORED_DIRS for part in path.parts):
             continue
+        if path.is_symlink():
+            continue
         if path.is_file():
             files.append(path)
     return sorted(files)

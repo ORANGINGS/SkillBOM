@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.0
+
+- Scan local Agent/MCP projects and public GitHub repository URLs without a paid API key.
+- Classify Agent Skill, MCP Server, Agent integration, and generic AI tool repositories.
+- Inventory exposed Python and JavaScript/TypeScript MCP tools.
+- Detect Node install hooks, remote download-and-execute behavior, child processes, dynamic evaluation, and sensitive credential/browser paths.
+- Report capabilities and external domains observed in code but not disclosed in project documentation.
+- Add repository-level JSON/SARIF output and Git-ref capability drift through `skillbom repo-diff`.
+- Harden public repository acquisition with shallow non-interactive clones, disabled hooks, resource limits, symlink exclusion, and temporary checkout cleanup.
+
 ## 0.3.0
 
 - Replace unaudited string exceptions with time-bounded exception grants in policy schema version 2.
