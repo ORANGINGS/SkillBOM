@@ -5,10 +5,10 @@ import re
 import shutil
 import subprocess
 import tempfile
+from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator
 from urllib.parse import urlparse
 
 GITHUB_HOST = "github.com"
