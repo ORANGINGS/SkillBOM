@@ -4,15 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "skillbom"
-version = "0.3.0"
-description = "Generate a bill of materials and detect capability drift for Agent Skills"
+version = "0.4.0"
+description = "Scan Agent Skills, MCP servers, and AI tool repositories for capability and supply-chain risk"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [
   { name = "ORANGINGS" }
 ]
-keywords = ["agent-skills", "security", "sbom", "static-analysis", "ai-agents"]
+keywords = ["agent-skills", "mcp", "security", "sbom", "static-analysis", "ai-agents"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Console",
@@ -39,12 +39,12 @@ dev = [
 ]
 
 [project.scripts]
-skillbom = "skillbom.cli:app"
+skillbom = "skillbom.app:app"
 
 [project.urls]
-Homepage = "https://github.com/ORANGINGS/skillbom"
-Repository = "https://github.com/ORANGINGS/skillbom"
-Issues = "https://github.com/ORANGINGS/skillbom/issues"
+Homepage = "https://github.com/ORANGINGS/SkillBOM"
+Repository = "https://github.com/ORANGINGS/SkillBOM"
+Issues = "https://github.com/ORANGINGS/SkillBOM/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]
