@@ -12,8 +12,8 @@ from skillbom.models import Severity
 from skillbom.parser import discover_skills
 from skillbom.project import build_project_report
 from skillbom.project_reporting import print_project_report, project_to_sarif
-from skillbom.repository import acquire_target, is_github_repository_url
 from skillbom.reporting import print_manifest, to_sarif, write_json
+from skillbom.repository import acquire_target, is_github_repository_url
 
 console = Console()
 
