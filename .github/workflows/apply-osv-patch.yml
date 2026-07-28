@@ -1,0 +1,61 @@
+name: Apply OSV dependency intelligence patch
+
+on:
+  push:
+    branches:
+      - agent/osv-dependency-intelligence
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-osv-dependency-intelligence
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/osv-dependency-intelligence
+          fetch-depth: 0
+      - name: Reassemble and verify development patch
+        id: verify
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          {
+            cat .github/osv-patch/g00 .github/osv-patch/g01 .github/osv-patch/g02 .github/osv-patch/g03 .github/osv-patch/g04 > /tmp/osv-05.patch.gz
+            sha256sum /tmp/osv-05.patch.gz
+            gzip -t /tmp/osv-05.patch.gz
+            gzip -dc /tmp/osv-05.patch.gz > /tmp/osv-05.patch
+            git status --short
+            git apply --check --verbose /tmp/osv-05.patch
+          } > /tmp/osv-apply-diagnostic.txt 2>&1
+      - name: Upload apply diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: osv-apply-diagnostic
+          path: /tmp/osv-apply-diagnostic.txt
+      - name: Fail on verification error
+        if: steps.verify.outcome == 'failure'
+        run: exit 1
+      - name: Apply verified development patch
+        run: |
+          git apply --index /tmp/osv-05.patch
+          git rm -r .github/osv-patch
+          git rm -f .github/osv-apply.patch.gz
+          git rm .github/workflows/apply-osv-patch.yml
+      - name: Commit atomic 0.5.0 update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Add zero-key OSV dependency intelligence"
+          git push origin HEAD:agent/osv-dependency-intelligence
