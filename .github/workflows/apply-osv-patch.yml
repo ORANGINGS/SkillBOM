@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - agent/osv-dependency-intelligence
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
